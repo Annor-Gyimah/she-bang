@@ -1,0 +1,6 @@
+Number of lines is
+19 dta.txt
+Number of characters are
+532 dta.txt
+Number of words are
+104 dta.txt
