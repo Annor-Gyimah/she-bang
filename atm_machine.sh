@@ -191,19 +191,23 @@ while [ "$condition" = false ]; do
                 if [ "$account_num" -eq "$acct" ] && [ "$ECG_bill" -lt 0 ]; then
                     echo "$name you owe GHS$ECG_bill of electricity bill"
                     read -p "How much do you wish to pay: " bill_amt
+                    bill_amt=${bill_amt##+(0)}
+                    if [ "$bill_amt" -le "$ECG_bill" ]; then
+                        let "cash = $ECG_bill + $bill_amt"
+                        sleep 1
+                        echo "Deducting from your account"
+                        let "left = $balance - $bill_amt"
+                        echo "Done !"
+                        sleep 0.5
+                        sed -i "s/$balance/$left/" atm_sheet.txt
+                        sed -i "s/$ECG_bill/$cash/" atm_sheet.txt
+                        echo "Your account balance is GHS$left"
                     
-                    let "cash = $ECG_bill + $bill_amt"
-                    sleep 1
-                    echo "Deducting from your account"
-                    let "left = $balance - $bill_amt"
-                    echo "Done !"
-                    sleep 0.5
-                    sed -i "s/$balance/$left/" atm_sheet.txt
-                    sed -i "s/$ECG_bill/$cash/" atm_sheet.txt
-                    echo "Your account balance is GHS$left"
-                    # Add a situation where if the amount the person wants to pay is greater than the bill
-                    # In this situation, say the bill is 30 and the amount to pay is 50, in this situation,
-                    # An if statement saying if
+                    else
+                        echo "Please the amount to pay should not be more than the bill"
+                        
+                    fi
+                    
                 elif [ "$account_num" -eq "$acct" ] && [ "$ECG_bill" -ge 0 ]; then
                     echo "You dont have any outstanding bill to pay"
                 
@@ -214,22 +218,28 @@ while [ "$condition" = false ]; do
                     read -p "Enter yes or no: " ans2
                     if [ "$ans2" = "yes" ]; then
                         read -p "How much do you wish to pay: " bill_amt
-                        cc=2
-                        result=$(awk -F ',' -v col="$cc" -v account_num="$account_num" '$col == account_num' atm_sheet.txt)
-                        balance=$(echo "$result" | awk -F ',' '{print $3}')
-                        sleep 1
-                        echo "Deducting from your account please wait...!"
-                        let "cah = $balance + $bill_amt"
-                        sleep 3
-                        echo "Done !"
-                        sed -i "s/$balance/$cah/" atm_sheet.txt
-                        sleep 1
-                        echo "Paying the bill for Meter ID $Meter_id"
-                        let "ec = $ECG_bill - $bill_amt"
-                        sed -i "s/$ECG_bill/$ec/" atm_sheet.txt
-                        sleep 2
-                        echo "Your account balance is GHS$cah"
-                        echo "Done !"
+                        bill_amt=${bill_amt##+(0)}
+                        if [ "$bill_amt" -le "$ECG_bill" ]; then
+                            cc=2
+                            result=$(awk -F ',' -v col="$cc" -v account_num="$account_num" '$col == account_num' atm_sheet.txt)
+                            balance=$(echo "$result" | awk -F ',' '{print $3}')
+                            sleep 1
+                            echo "Deducting from your account please wait...!"
+                            let "cah = $balance - $bill_amt"
+                            sleep 3
+                            echo "Done !"
+                            sed -i "s/$balance/$cah/" atm_sheet.txt
+                            sleep 1
+                            echo "Paying the bill for Meter ID $Meter_id"
+                            let "ec = $ECG_bill + $bill_amt"
+                            sed -i "s/$ECG_bill/$ec/" atm_sheet.txt
+                            sleep 2
+                            echo "Your account balance is GHS$cah"
+                            echo "Done !"
+                        else
+                            echo "Please the amount to pay should not be more than the bill"
+                            
+                        fi
                         
                     elif [ "$ans2" = "no" ]; then
                         echo "Electric bill payment unsuccessfull"
@@ -252,7 +262,7 @@ while [ "$condition" = false ]; do
                     echo "Note meter ids starts with EC followed by the eight digit number"
                     sleep 1
                     echo "The system will reject any meter id that does not follow this rule"
-                    sleep 2
+                    sleep 1
                     while [ "$condition3" = false ]; do
                         read -p "Please enter your meter id: " meter
                         if [[ ! "$meter" =~ ^EC ]]; then
@@ -278,6 +288,7 @@ while [ "$condition" = false ]; do
                                     balance=$(echo "$result" | awk -F ',' '{print $3}')
                                     ECG_bill=$(echo "$result" | awk -F ',' '{print $4}')
                                     idm=$(echo "$result" | awk -F ',' '{print $5}')
+                                    
                                     name=$(echo "$result" | awk -F ',' '{print $1}')
                                     sleep 1
                                     echo "Deducting from your account please wait...!"
@@ -289,7 +300,10 @@ while [ "$condition" = false ]; do
                                     echo "Paying the bill for Meter ID $meter"
                                     let "ec = $ECG_bill + $bill_amt"
                                     sed -i "s/$ECG_bill/$ec/" atm_sheet.txt
-                                    sed -i "s/$idm/$meter/" atm_sheet.txt
+                                    awk -F ',' -v account_num="$account_num" -v meter="$meter" '$2 == account_num {$5 = meter} 1' OFS=',' atm_sheet.txt > temp && mv temp atm_sheet.txt
+
+
+                                    # sed -i "s/^$idm$/$meter/" atm_sheet.txt
                                     sleep 2
                                     echo "Your account balance is GHS$cah"
                                     echo "Done !"
